@@ -269,6 +269,7 @@ growproc(int n)
 
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
+/* Copy the trace mask from the parent to the child process */
 int
 fork(void)
 {
@@ -280,6 +281,9 @@ fork(void)
   if((np = allocproc()) == 0){
     return -1;
   }
+
+  // Copy the trace mask to the child process
+  np->trace = p->trace;
 
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
@@ -653,4 +657,17 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int nproc(void) {
+  struct proc *p;
+  int count = 0;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if (p->state != UNUSED)
+      count++;
+  }
+  printf("[proc.c] nproc %d\n", count);  
+
+  return count;
 }

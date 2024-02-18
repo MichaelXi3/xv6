@@ -5,7 +5,41 @@
 #include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "sysinfo.h"
 #include "proc.h"
+
+uint64
+sys_sysinfo(void)
+{
+  uint64 sysinfo_addr;
+  if(argaddr(0, &sysinfo_addr) < 0)
+    return -1;
+  printf("[sysproc.c] sysinfo addr copied\n");
+
+  struct sysinfo sys_info;
+  sys_info.freemem = freemem();
+  sys_info.nproc = nproc();
+  printf("[sysproc.c] sys_info information collected\n");
+
+  if (copyout(myproc()->pagetable, sysinfo_addr, (char *)&sys_info,
+sizeof(sys_info)) < 0) {
+    printf("[sysproc.c] ERROR: copyour failed\n");
+    return -1;
+  }
+  printf("[sysproc.c] sys_info struct copyout to user space\n");
+  return 0;
+}
+
+uint64
+sys_trace(void)
+{
+  int n;
+  if (argint(0, &n) < 0)
+    return -1;
+  myproc()->trace = n;
+  printf("[sysproc.c] sys_trace triggered\n");
+  return 0;    
+}
 
 uint64
 sys_exit(void)
