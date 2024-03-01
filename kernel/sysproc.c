@@ -7,6 +7,45 @@
 #include "spinlock.h"
 #include "proc.h"
 
+
+#ifdef LAB_PGTBL
+int
+sys_pgaccess(void)
+{
+  // initialization of buffer
+  uint64 va_start;
+  if(argaddr(0, &va_start) < 0)
+    return -1;
+  
+  int npage;
+  if(argint(1, &npage) < 0)
+    return -1;
+
+  uint64 ua_buffer;
+  if(argaddr(2, &ua_buffer) < 0)
+    return -1;
+  
+  uint64 bitmask = 0;
+  struct proc *p = myproc();
+
+  // iterate the pages and fill in bitmask
+  for (int i = 0; i < npage; i++) {
+    // get the pte of corresponding page 
+    pte_t *pte = walk(p->pagetable, va_start + i * PGSIZE, 0);    
+    // check for the PTE_A bit
+    if ((*pte) & PTE_A) {
+      bitmask |= (1L << i);
+      // clear the access bit to pte
+      (*pte) &= (~PTE_A);
+    }
+  } 
+
+  // copy the bitmask to user space buffer
+  copyout(p->pagetable, ua_buffer, (char *)&bitmask, sizeof(bitmask));
+  return 0;
+}
+#endif
+
 uint64
 sys_exit(void)
 {
@@ -74,16 +113,6 @@ sys_sleep(void)
   release(&tickslock);
   return 0;
 }
-
-
-#ifdef LAB_PGTBL
-int
-sys_pgaccess(void)
-{
-  // lab pgtbl: your code here.
-  return 0;
-}
-#endif
 
 uint64
 sys_kill(void)

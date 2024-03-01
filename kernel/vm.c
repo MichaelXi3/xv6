@@ -281,6 +281,35 @@ freewalk(pagetable_t pagetable)
   kfree((void*)pagetable);
 }
 
+void printpagetable(pagetable_t pagetable, int depth) {
+  // based on risv.h, each page table has 512 PTEs
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+    
+    // if pte is valid, print the current pte
+    if (pte & PTE_V) {
+      printf("..");
+      for (int j = 0; j < depth; j++) {
+        printf(" ..");
+      }
+      printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+    }
+
+    // check if this PTE points to a lower-level page table
+    // if so, keep recursively print the pagetable
+    if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+      uint64 childpagetable = PTE2PA(pte);
+      printpagetable((pagetable_t) childpagetable, depth + 1);
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  printpagetable(pagetable, 0);
+}
+
+
 // Free user memory pages,
 // then free page-table pages.
 void
