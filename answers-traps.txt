@@ -1,0 +1,101 @@
+michaelxi
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ cd kernel/
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021/kernel$ ls
+bio.c      fcntl.h     kernel.sym   plic.d       spinlock.c  syscall.h     uart.d
+bio.d      file.c      kernelvec.o  plic.o       spinlock.d  syscall.o     uart.o
+bio.o      file.d      kernelvec.S  printf.c     spinlock.h  sysfile.c     virtio_disk.c
+buf.h      file.h      log.c        printf.d     spinlock.o  sysfile.d     virtio_disk.d
+console.c  file.o      log.d        printf.o     start.c     sysfile.o     virtio_disk.o
+console.d  fs.c        log.o        proc.c       start.d     sysproc.c     virtio.h
+console.o  fs.d        main.c       proc.d       start.o     sysproc.d     vm.c
+date.h     fs.h        main.d       proc.h       stat.h      sysproc.o     vm.d
+defs.h     fs.o        main.o       proc.o       string.c    trampoline.o  vm.o
+elf.h      kalloc.c    memlayout.h  ramdisk.c    string.d    trampoline.S
+entry.o    kalloc.d    param.h      riscv.h      string.o    trap.c
+entry.S    kalloc.o    pipe.c       sleeplock.c  swtch.o     trap.d
+exec.c     kernel      pipe.d       sleeplock.d  swtch.S     trap.o
+exec.d     kernel.asm  pipe.o       sleeplock.h  syscall.c   types.h
+exec.o     kernel.ld   plic.c       sleeplock.o  syscall.d   uart.c
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021/kernel$ vi printf.
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021/kernel$ vi printf.c
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021/kernel$ cd ..
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ make qemu
+riscv64-linux-gnu-gcc -Wall -Werror -O -fno-omit-frame-pointer -ggdb -DSOL_TRAPS -DLAB_TRAPS -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -fno-pie -no-pie  -c -o kernel/printf.o kernel/printf.c
+riscv64-linux-gnu-ld -z max-page-size=4096 -T kernel/kernel.ld -o kernel/kernel kernel/entry.o kernel/kalloc.o kernel/string.o kernel/main.o kernel/vm.o kernel/proc.o kernel/swtch.o kernel/trampoline.o kernel/trap.o kernel/syscall.o kernel/sysproc.o kernel/bio.o kernel/fs.o kernel/log.o kernel/sleeplock.o kernel/file.o kernel/pipe.o kernel/exec.o kernel/sysfile.o kernel/kernelvec.o kernel/plic.o kernel/virtio_disk.o kernel/start.o kernel/console.o kernel/printf.o kernel/uart.o kernel/spinlock.o
+riscv64-linux-gnu-objdump -S kernel/kernel > kernel/kernel.asm
+riscv64-linux-gnu-objdump -t kernel/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$/d' > kernel/kernel.sym
+qemu-system-riscv64 -machine virt -bios none -kernel kernel/kernel -m 128M -smp 3 -nographic -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ bttest
+backtrace:
+fp:-24704
+fp:-24704
+0x00000000800020e6
+fp:-24640
+0x0000000080001fac
+fp:-24608
+0x0000000080001c96
+fp:-24576
+0x0000000000000012
+$ QEMU 6.2.0 monitor - type 'help' for more information
+(qemu) quit
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ vi kernel/
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ vi kernel/printf.c
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ make qemu
+riscv64-linux-gnu-gcc -Wall -Werror -O -fno-omit-frame-pointer -ggdb -DSOL_TRAPS -DLAB_TRAPS -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -fno-pie -no-pie  -c -o kernel/printf.o kernel/printf.c
+riscv64-linux-gnu-ld -z max-page-size=4096 -T kernel/kernel.ld -o kernel/kernel kernel/entry.o kernel/kalloc.o kernel/string.o kernel/main.o kernel/vm.o kernel/proc.o kernel/swtch.o kernel/trampoline.o kernel/trap.o kernel/syscall.o kernel/sysproc.o kernel/bio.o kernel/fs.o kernel/log.o kernel/sleeplock.o kernel/file.o kernel/pipe.o kernel/exec.o kernel/sysfile.o kernel/kernelvec.o kernel/plic.o kernel/virtio_disk.o kernel/start.o kernel/console.o kernel/printf.o kernel/uart.o kernel/spinlock.o
+riscv64-linux-gnu-objdump -S kernel/kernel > kernel/kernel.asm
+riscv64-linux-gnu-objdump -t kernel/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$/d' > kernel/kernel.sym
+qemu-system-riscv64 -machine virt -bios none -kernel kernel/kernel -m 128M -smp 3 -nographic -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+xv6 kernel is booting
+
+hart 2 starting
+hart 1 starting
+init: starting sh
+$ bttest
+backtrace:
+0x00000000800020e6
+0x0000000080001fac
+0x0000000080001c96
+0x0000000000000012
+$ QEMU 6.2.0 monitor - type 'help' for more information
+(qemu) 
+(qemu) quit
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ ls
+conf    grade-lab-traps  kernel   Makefile  __pycache__  user
+fs.img  gradelib.py      LICENSE  mkfs      README       xv6.out
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ add
+add-apt-repository  addgroup            addr2line           adduser
+addgnupghome        addpart             add-shell           
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ add
+add-apt-repository  addgroup            addr2line           adduser
+addgnupghome        addpart             add-shell           
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ add
+add-apt-repository  addgroup            addr2line           adduser
+addgnupghome        addpart             add-shell           
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ add
+add-apt-repository  addgroup            addr2line           adduser
+addgnupghome        addpart             add-shell           
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ addr2line -e kernel/kernel
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ vi kernel/riscv.h 
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ vi kernel/riscv.h 
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ ./grade-lab-traps traps
+make: 'kernel/kernel' is up to date.
+== Test answers-traps.txt == answers-traps.txt: FAIL 
+    Cannot read answers-traps.txt
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ touch answers-traps.txt
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ echo "michaelxi" > answers-traps.txt 
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ ./grade-lab-traps traps
+make: 'kernel/kernel' is up to date.
+== Test answers-traps.txt == answers-traps.txt: FAIL 
+    answers-traps.txt does not seem to contain enough text
+michaelxi@michaelxi-VirtualBox:~/xv6-labs-2021$ echo "
+
+:wq
+
