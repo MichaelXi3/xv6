@@ -15,6 +15,12 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+extern struct spinlock cnt_lock;
+
+extern int refcnt[];
+
+extern char end[];
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -156,6 +162,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     a += PGSIZE;
     pa += PGSIZE;
   }
+
   return 0;
 }
 
@@ -303,23 +310,38 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
+
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
+
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+
+    /* only set COW flag to writable page */
+    if (flags & PTE_W) {
+      flags = (flags | PTE_COW) & (~PTE_W);
+      *pte = PA2PTE(pa) | flags;
+    }
+
+    /* increment the reference count of page */
+    if ((uint64) pa % PGSIZE != 0 || (char *) pa < end || (uint64)pa >=
+PHYSTOP) {
+      printf("[vm.c] uvmcopy pa invalid\n");
+      return -1;  
+    }
+    acquire(&cnt_lock);
+    refcnt[((uint64)pa >> 12)] += 1;
+    release(&cnt_lock);
+
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       goto err;
     }
   }
+
   return 0;
 
  err:
@@ -350,9 +372,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
+    if (va0 > MAXVA)
       return -1;
+
+    /* get the pte of va */
+    pte_t* pte = walk(pagetable, va0, 0);
+    if (pte == 0)
+      return -1;
+
+    /* if the va is a COW page, process cow handling */
+    if ((*pte) & PTE_COW) {
+      if (cow_handling(pagetable, va0) < 0) {
+         return -1; 
+      }
+    }
+
+    /* update the pa after the cow handling */
+    pa0 = PTE2PA(*pte);
+
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
@@ -431,4 +468,41 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+/* allocate page for cow page */
+int cow_handling(pagetable_t pgtable, uint64 va) {
+  /* first, check if it's COW page */
+  if (va >= MAXVA)
+    return -1;
+
+  pte_t* pte = walk(pgtable, va, 0);
+  if (pte == 0)
+    return -1;  
+
+  if ((*pte & PTE_V) == 0)
+    return -1;
+  if ((*pte & PTE_COW) == 0)
+    return -1;
+  if ((*pte & PTE_U) == 0)
+    return -1;
+
+  /* second, get the pa and copy it, also, add back PTE_W */
+  uint64 pa = PTE2PA(*pte);
+  if (pa == 0)
+    return -1;
+
+  uint64 ka = (uint64) kalloc();
+  if (ka == 0)
+    return -1;
+
+  memmove((char*) ka, (char*) pa, PGSIZE);
+
+  uint64 flags = PTE_FLAGS(*pte);
+  *pte = PA2PTE(ka) | flags | PTE_W;
+  *pte &= ~PTE_COW;
+
+  /* decrement ref count of old pa */
+  kfree((void *)pa);
+  return 0;
 }
